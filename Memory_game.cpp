@@ -66,13 +66,14 @@ enum state_t {
 };
 state_t current_state = INIT_STATE;
 uint8_t frames_to_remember = MIN_FRAMES;
-uint8_t current_index_x = 0, current_index_y = 0, current_frame = MIN_FRAMES;
+uint8_t current_index_x = 0, current_index_y = 0, current_frame = 0;
 
 COLORS frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
 
 void init_state();
 void setting_state();
 void frame_state();
+void remember_state();
 bool update_state();
 
 int main() {
@@ -142,14 +143,14 @@ void frame_state() {
     if (jst_X_state.last_direction == NEG) {
       if (current_index_x > 0) {
         current_index_x--;
-      } else if (current_frame > MIN_FRAMES) {
+      } else if (current_frame > 0) {
         current_index_x = LED_COUNT_X - 1;
         current_frame--;
       }
     } else { // jst_x_changed == POS, because jst_x_changed is false when NEUTRAL
       if (current_index_x + 1 < LED_COUNT_X) {
         current_index_x++;
-      } else if (current_frame < frames_to_remember) {
+      } else if (current_frame + 1 < frames_to_remember) {
         current_index_x = 0;
         current_frame++;
       }
@@ -209,6 +210,30 @@ void frame_state() {
   blink = !blink;
 }
 
+void remember_state() {
+  printf("Remember state\n");
+  LedMatrix* led_matrix = &LedMatrix::getInstance();
+
+  if (sw_clicked) {
+    current_state = GAME_STATE;
+    return;
+  }
+
+  if (current_frame > 0) {
+    if (btn_A_clicked || (jst_x_changed && jst_X_state.last_direction == NEG)) {
+      current_frame--;
+    }
+  }
+
+  if (current_frame + 1 < frames_to_remember) {
+    if (btn_B_clicked || (jst_x_changed && jst_X_state.last_direction == POS)) {
+      current_frame++;
+    }
+  }
+
+  led_matrix->setLEDs(frames[current_frame]);
+}
+
 bool update_state() {
   input_manager();
 
@@ -223,7 +248,10 @@ bool update_state() {
     frame_state();
     break;
   case REMEMBER_STATE:
-    printf("Remember state\n");
+    remember_state();
+    break;
+  case GAME_STATE:
+    printf("Game state\n");
     break;
   default:
     break;
