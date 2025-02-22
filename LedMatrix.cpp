@@ -84,6 +84,23 @@ void LedMatrix::setSmile(COLORS color) {
   setLED(0, 0, color); setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color); setLED(4, 0, color);
 }
 
+void LedMatrix::setCheck(COLORS color) {
+  clear();
+                                                                                      setLED(4, 3, color);
+                                                                 setLED(3, 2, color);
+  setLED(0, 1, color);                      setLED(2, 1, color);
+                       setLED(1, 0, color);
+}
+
+void LedMatrix::setCross(COLORS color) {
+  clear();
+  setLED(0, 4, color);                                                                setLED(4, 4, color);
+                       setLED(1, 3, color);                      setLED(3, 3, color);
+                                            setLED(2, 2, color);
+                       setLED(1, 1, color);                      setLED(3, 1, color);
+  setLED(0, 0, color);                                                                setLED(4, 0, color);
+}
+
 void LedMatrix::setNumber(const uint8_t number, COLORS color) {
   switch (number) {
     case 0:

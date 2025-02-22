@@ -64,9 +64,16 @@ enum state_t {
   GAME_STATE,
   FINAL_STATE
 };
+enum COMPARE_STATE {
+    CORRECT,
+    PLAYER,
+    COMPARE,
+    COMPARE_STATE_COUNT
+  };
 state_t current_state = INIT_STATE;
 uint8_t frames_to_remember = MIN_FRAMES;
 uint8_t current_index_x = 0, current_index_y = 0, current_frame = 0;
+COMPARE_STATE show_frames_comp = CORRECT;
 
 COLORS frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
 COLORS player_frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
@@ -76,9 +83,15 @@ void setting_state();
 void frame_state();
 void remember_state();
 void game_state();
+void final_state();
 bool update_state();
 
+bool compare_frames(
+  COLORS frame1[LED_COUNT_X][LED_COUNT_Y],
+  COLORS frame2[LED_COUNT_X][LED_COUNT_Y]
+);
 void navigate_leds();
+void switch_frames();
 void set_frames(COLORS current_frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y]);
 
 int main() {
@@ -106,6 +119,7 @@ void init_state() {
 
   if (sw_clicked) {
     current_state = SETTING_STATE;
+    frames_to_remember = MIN_FRAMES;
   }
 }
 
@@ -144,6 +158,7 @@ void frame_state() {
   printf("Frame state\n");
   if (sw_clicked) {
     current_state = REMEMBER_STATE;
+    current_frame = 0;
     return;
   }
 
@@ -165,17 +180,7 @@ void remember_state() {
     return;
   }
 
-  if (current_frame > 0) {
-    if (btn_A_clicked || (jst_x_changed && jst_X_state.last_direction == NEG)) {
-      current_frame--;
-    }
-  }
-
-  if (current_frame + 1 < frames_to_remember) {
-    if (btn_B_clicked || (jst_x_changed && jst_X_state.last_direction == POS)) {
-      current_frame++;
-    }
-  }
+  switch_frames();
 
   led_matrix->setLEDs(frames[current_frame]);
 }
@@ -186,10 +191,46 @@ void game_state() {
 
   if (sw_clicked) {
     current_state = FINAL_STATE;
+    show_frames_comp = CORRECT;
+    current_frame = 0;
     return;
   }
 
   set_frames(player_frames);
+}
+
+void final_state() {
+  printf("Final state\n");
+  LedMatrix* led_matrix = &LedMatrix::getInstance();
+
+  if (sw_clicked) {
+    current_state = INIT_STATE;
+  }
+
+  switch_frames();
+
+  switch (show_frames_comp) {
+  case CORRECT:
+    led_matrix->setLEDs(frames[current_frame]);
+    break;
+  case PLAYER:
+    led_matrix->setLEDs(player_frames[current_frame]);
+    break;
+  case COMPARE:
+    if (compare_frames(frames[current_frame], player_frames[current_frame])) {
+      led_matrix->setCheck(GREEN);
+    } else {
+      led_matrix->setCross(RED);
+    }
+  default:
+    break;
+  }
+
+  if (show_frames_comp == COMPARE) {
+    show_frames_comp = CORRECT;
+  } else {
+    show_frames_comp = (COMPARE_STATE)((int)show_frames_comp + 1); // show_frames_comp++ doesn't work
+  }
 }
 
 bool update_state() {
@@ -212,12 +253,37 @@ bool update_state() {
     game_state();
     break;
   case FINAL_STATE:
-    printf("Final state\n");
+    final_state();
     break;
   default:
     break;
   }
 
+  return true;
+}
+
+void switch_frames() {
+  if (current_frame > 0) {
+    if (btn_A_clicked || (jst_x_changed && jst_X_state.last_direction == NEG)) {
+      current_frame--;
+    }
+  }
+
+  if (current_frame + 1 < frames_to_remember) {
+    if (btn_B_clicked || (jst_x_changed && jst_X_state.last_direction == POS)) {
+      current_frame++;
+    }
+  }
+}
+
+bool compare_frames(
+  COLORS frame1[LED_COUNT_X][LED_COUNT_Y],
+  COLORS frame2[LED_COUNT_X][LED_COUNT_Y]
+) {
+  for (uint8_t i = 0; i < LED_COUNT_X; i++)
+    for (uint8_t j = 0; j < LED_COUNT_Y; j++)
+      if (frame1[i][j] != frame2[i][j])
+        return false;
   return true;
 }
 

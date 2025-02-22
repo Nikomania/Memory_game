@@ -50,6 +50,8 @@ public:
   static void clear(COLORS leds[LED_COUNT_X][LED_COUNT_Y]);
   
   void setSmile(COLORS color);
+  void setCheck(COLORS color);
+  void setCross(COLORS color);
 
   void setNumber(const uint8_t number, COLORS color);
   void setNumberOne(COLORS color);
