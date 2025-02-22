@@ -17,38 +17,58 @@ struct rgb_t {
   uint8_t R, G, B;
 };
 
-#define RGB_BLACK {0, 0, 0}
-#define RGB_WHITE {16, 16, 16}
-#define RGB_RED {16, 0, 0}
-#define RGB_GREEN {0, 16, 0}
-#define RGB_BLUE {0, 0, 16}
-#define RGB_YELLOW {16, 16, 0}
-#define RGB_CYAN {0, 16, 16}
-#define RGB_MAGENTA {16, 0, 16}
+enum COLORS {
+  BLACK,
+  WHITE,
+  RED,
+  GREEN,
+  BLUE,
+  YELLOW,
+  CYAN,
+  MAGENTA,
+  COLORS_COUNT
+};
+
+const rgb_t COLORS_ARRAY[COLORS_COUNT] = {
+  {0, 0, 0},
+  {16, 16, 16},
+  {16, 0, 0},
+  {0, 16, 0},
+  {0, 0, 16},
+  {16, 16, 0},
+  {0, 16, 16},
+  {16, 0, 16}
+};
 
 class LedMatrix {
 public:
   static LedMatrix& getInstance();
-  void setLED(const uint index_x, const uint index_y, const rgb_t led);
-  void clear();
+  void setLED(const uint index_x, const uint index_y, const COLORS color);
+  void setLEDs(const COLORS leds[LED_COUNT_X][LED_COUNT_Y]);
   void render();
+  void clear();
+  static void clear(COLORS leds[LED_COUNT_X][LED_COUNT_Y]);
   
-  void setSmile(struct rgb_t color);
-  void setNumberOne(struct rgb_t color);
-  void setNumberTwo(struct rgb_t color);
-  void setNumberThree(struct rgb_t color);
-  void setNumberFour(struct rgb_t color);
-  void setNumberFive(struct rgb_t color);
-  void setNumberSix(struct rgb_t color);
-  void setNumberSeven(struct rgb_t color);
-  void setNumberEight(struct rgb_t color);
-  void setNumberNine(struct rgb_t color);
-  void setNumberZero(struct rgb_t color);
+  void setSmile(COLORS color);
+
+  void setNumber(const uint8_t number, COLORS color);
+  void setNumberOne(COLORS color);
+  void setNumberTwo(COLORS color);
+  void setNumberThree(COLORS color);
+  void setNumberFour(COLORS color);
+  void setNumberFive(COLORS color);
+  void setNumberSix(COLORS color);
+  void setNumberSeven(COLORS color);
+  void setNumberEight(COLORS color);
+  void setNumberNine(COLORS color);
+  void setNumberZero(COLORS color);
 private:
   LedMatrix();
-  rgb_t led_matrix[LED_COUNT_X][LED_COUNT_Y];
+  COLORS led_matrix[LED_COUNT_X][LED_COUNT_Y];
   PIO led_matrix_pio;
   uint sm;
+
+  bool was_changed;
 
   static LedMatrix* instance;
 };

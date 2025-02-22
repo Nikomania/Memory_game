@@ -9,7 +9,7 @@ LedMatrix& LedMatrix::getInstance() {
   return *instance;
 }
 
-LedMatrix::LedMatrix() : led_matrix(), led_matrix_pio(), sm() {
+LedMatrix::LedMatrix() : led_matrix(), led_matrix_pio(), sm(), was_changed(false) {
   instance = this;
   uint offset = pio_add_program(pio0, &ws2818b_program);
   led_matrix_pio = pio0;
@@ -25,27 +25,44 @@ LedMatrix::LedMatrix() : led_matrix(), led_matrix_pio(), sm() {
   clear();
 }
 
-void LedMatrix::setLED(const uint index_x, const uint index_y, const rgb_t led) {
+void LedMatrix::setLED(const uint index_x, const uint index_y, const COLORS color) {
   if (index_x >= LED_COUNT_X || index_y >= LED_COUNT_Y) {
     return;
   }
+  was_changed = true;
 
-  led_matrix[index_x][index_y] = {led.R, led.G, led.B};
+  led_matrix[index_x][index_y] = color;
+}
+
+void LedMatrix::setLEDs(const COLORS leds[LED_COUNT_X][LED_COUNT_Y]) {
+  for (uint8_t i = 0; i < LED_COUNT_X; i++)
+    for (uint8_t j = 0; j < LED_COUNT_Y; j++)
+      setLED(i, j, leds[i][j]);
 }
 
 void LedMatrix::clear() {
   for (uint8_t i = 0; i < LED_COUNT_X; i++)
     for (uint8_t j = 0; j < LED_COUNT_Y; j++)
-      setLED(i, j, RGB_BLACK);
+      setLED(i, j, BLACK);
+}
+
+void LedMatrix::clear(COLORS leds[LED_COUNT_X][LED_COUNT_Y]) {
+  for (uint8_t i = 0; i < LED_COUNT_X; i++)
+    for (uint8_t j = 0; j < LED_COUNT_Y; j++)
+      leds[i][j] = BLACK;
 }
 
 void LedMatrix::render() {
+  if (!was_changed) {
+    return;
+  }
+  was_changed = false;
   for (uint8_t j = 0; j < LED_COUNT_Y; j++) {
     for (int8_t i = 0; i < LED_COUNT_X; i++) {
       const uint8_t index_x = j % 2 == 0 ? LED_COUNT_X - 1 - i : i;
-      pio_sm_put_blocking(led_matrix_pio, sm, led_matrix[index_x][j].G);
-      pio_sm_put_blocking(led_matrix_pio, sm, led_matrix[index_x][j].R);
-      pio_sm_put_blocking(led_matrix_pio, sm, led_matrix[index_x][j].B);
+      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].G);
+      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].R);
+      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].B);
     }
   }
   sleep_us(100); // wait for 100us, RESET signal from datasheet
@@ -58,7 +75,53 @@ void LedMatrix::render() {
 // setLED(0, 0, color); setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color); setLED(4, 0, color);
 
 
-void LedMatrix::setSmile(struct rgb_t color) {
+void LedMatrix::setSmile(COLORS color) {
+  clear();
+                       setLED(1, 4, color);                      setLED(3, 4, color);
+                       setLED(1, 3, color);                      setLED(3, 3, color);
+
+  setLED(0, 1, color);                                                                setLED(4, 1, color);
+  setLED(0, 0, color); setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color); setLED(4, 0, color);
+}
+
+void LedMatrix::setNumber(const uint8_t number, COLORS color) {
+  switch (number) {
+    case 0:
+      setNumberZero(color);
+      break;
+    case 1:
+      setNumberOne(color);
+      break;
+    case 2:
+      setNumberTwo(color);
+      break;
+    case 3:
+      setNumberThree(color);
+      break;
+    case 4:
+      setNumberFour(color);
+      break;
+    case 5:
+      setNumberFive(color);
+      break;
+    case 6:
+      setNumberSix(color);
+      break;
+    case 7:
+      setNumberSeven(color);
+      break;
+    case 8:
+      setNumberEight(color);
+      break;
+    case 9:
+      setNumberNine(color);
+      break;
+    default:
+      break;
+  }
+}
+
+void LedMatrix::setNumberZero(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
     setLED(1, 3, color);                      setLED(3, 3, color);
@@ -67,16 +130,7 @@ void LedMatrix::setSmile(struct rgb_t color) {
     setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberZero(struct rgb_t color) {
-    clear();
-    setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
-    setLED(1, 3, color);                      setLED(3, 3, color);
-    setLED(1, 2, color);                      setLED(3, 2, color);
-    setLED(1, 1, color);                      setLED(3, 1, color);
-    setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
-}
-
-void LedMatrix::setNumberOne(struct rgb_t color) {
+void LedMatrix::setNumberOne(COLORS color) {
   clear();
                        setLED(2, 4, color);
   setLED(1, 3, color); setLED(2, 3, color);
@@ -86,7 +140,7 @@ void LedMatrix::setNumberOne(struct rgb_t color) {
   render();
 }
 
-void LedMatrix::setNumberTwo(struct rgb_t color) {
+void LedMatrix::setNumberTwo(COLORS color) {
   clear();
   setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
                                             setLED(3, 3, color);
@@ -96,7 +150,7 @@ void LedMatrix::setNumberTwo(struct rgb_t color) {
   render();
 }
 
-void LedMatrix::setNumberThree(struct rgb_t color) {
+void LedMatrix::setNumberThree(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
                                               setLED(3, 3, color);
@@ -105,7 +159,7 @@ void LedMatrix::setNumberThree(struct rgb_t color) {
     setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberFour(struct rgb_t color) {
+void LedMatrix::setNumberFour(COLORS color) {
     clear();
     setLED(1, 4, color);                      setLED(3, 4, color);
     setLED(1, 3, color);                      setLED(3, 3, color);
@@ -114,7 +168,7 @@ void LedMatrix::setNumberFour(struct rgb_t color) {
                                               setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberFive(struct rgb_t color) {
+void LedMatrix::setNumberFive(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
     setLED(1, 3, color);
@@ -123,7 +177,7 @@ void LedMatrix::setNumberFive(struct rgb_t color) {
     setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberSix(struct rgb_t color) {
+void LedMatrix::setNumberSix(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
     setLED(1, 3, color);
@@ -132,7 +186,7 @@ void LedMatrix::setNumberSix(struct rgb_t color) {
     setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberSeven(struct rgb_t color) {
+void LedMatrix::setNumberSeven(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
                                               setLED(3, 3, color);
@@ -141,7 +195,7 @@ void LedMatrix::setNumberSeven(struct rgb_t color) {
                                               setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberEight(struct rgb_t color) {
+void LedMatrix::setNumberEight(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
     setLED(1, 3, color);                      setLED(3, 3, color);
@@ -150,7 +204,7 @@ void LedMatrix::setNumberEight(struct rgb_t color) {
     setLED(1, 0, color); setLED(2, 0, color); setLED(3, 0, color);
 }
 
-void LedMatrix::setNumberNine(struct rgb_t color) {
+void LedMatrix::setNumberNine(COLORS color) {
     clear();
     setLED(1, 4, color); setLED(2, 4, color); setLED(3, 4, color);
     setLED(1, 3, color);                      setLED(3, 3, color);

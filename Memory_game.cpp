@@ -5,11 +5,13 @@
 #include "hardware/adc.h"
 #include "LedMatrix.h"
 
-#define INPUT_DELAY 100
-#define BTN_DEBOUNCE 50
+#define UPDATE_STATE_DELAY 250
+#define BTN_DEBOUNCE 100
 #define ADC_BITS 12
 #define ADC_MAX (1 << ADC_BITS) - 1 // 12-bit ADC
 #define JST_THRESHOLD 300
+#define MAX_FRAMES 9
+#define MIN_FRAMES 1
 
 #define abs(x) ((x) < 0 ? -(x) : (x))
 
@@ -42,7 +44,7 @@ struct joystick_state_t {
 void input_manager();
 bool check_button_state(volatile struct button_state_t *btn_state);
 bool check_joystick_state(volatile struct joystick_state_t *jst_state);
-direction_t get_joystick_direction();
+direction_t get_joystick_direction(int pin);
 
 volatile struct button_state_t btn_A_state = {0, false, BTN_A_PIN};
 volatile struct button_state_t btn_B_state = {0, false, BTN_B_PIN};
@@ -63,10 +65,15 @@ enum state_t {
   FINAL_STATE
 };
 state_t current_state = INIT_STATE;
+uint8_t frames_to_remember = MIN_FRAMES;
+uint8_t current_index_x = 0, current_index_y = 0, current_frame = MIN_FRAMES;
+
+COLORS frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
 
 void init_state();
 void setting_state();
-bool update_state_callback(struct repeating_timer *t);
+void frame_state();
+bool update_state();
 
 int main() {
   stdio_init_all();
@@ -74,10 +81,12 @@ int main() {
 
   LedMatrix* led_matrix = &LedMatrix::getInstance();
 
-  struct repeating_timer timer;
-  add_repeating_timer_ms(INPUT_DELAY, update_state_callback, NULL, &timer);
+  // struct repeating_timer timer;
+  // add_repeating_timer_ms(UPDATE_STATE_DELAY, update_state_callback, NULL, &timer);
   while (true) {
-    tight_loop_contents();
+    update_state();
+    led_matrix->render();
+    sleep_ms(UPDATE_STATE_DELAY);
   }
 
   delete led_matrix;
@@ -86,18 +95,121 @@ int main() {
 
 void init_state() {
   printf("Init state\n");
-  sleep_ms(1000);
+  LedMatrix* led_matrix = &LedMatrix::getInstance();
+  led_matrix->setSmile(MAGENTA);
 
-  current_state = SETTING_STATE;
+  if (sw_clicked) {
+    current_state = SETTING_STATE;
+  }
 }
 
 void setting_state() {
   printf("Setting state\n");
-  sleep_ms(1000);
-  current_state = FRAME_STATE;
+  LedMatrix* led_matrix = &LedMatrix::getInstance();
+
+  if (sw_clicked) {
+    current_state = FRAME_STATE;
+    for (uint8_t i = 0; i < frames_to_remember; i++) {
+      LedMatrix::clear(frames[i]);
+    }
+    return;
+  }
+
+  if (frames_to_remember > MIN_FRAMES) {
+    if (btn_A_clicked || (jst_x_changed && jst_X_state.last_direction == NEG)) {
+      frames_to_remember--;
+    }
+  }
+
+  if (frames_to_remember < MAX_FRAMES) {
+    if (btn_B_clicked || (jst_x_changed && jst_X_state.last_direction == POS)) {
+      frames_to_remember++;
+    }
+  }
+  printf("Frames to remember: %d\n", frames_to_remember);
+
+  led_matrix->setNumber(frames_to_remember, BLUE);
 }
 
-bool update_state_callback(struct repeating_timer *t) {
+void frame_state() {
+  printf("Frame state\n");
+  if (sw_clicked) {
+    current_state = REMEMBER_STATE;
+    return;
+  }
+
+  if (jst_x_changed) {
+    if (jst_X_state.last_direction == NEG) {
+      if (current_index_x > 0) {
+        current_index_x--;
+      } else if (current_frame > MIN_FRAMES) {
+        current_index_x = LED_COUNT_X - 1;
+        current_frame--;
+      }
+    } else { // jst_x_changed == POS, because jst_x_changed is false when NEUTRAL
+      if (current_index_x + 1 < LED_COUNT_X) {
+        current_index_x++;
+      } else if (current_frame < frames_to_remember) {
+        current_index_x = 0;
+        current_frame++;
+      }
+    }
+  }
+
+  if (jst_y_changed) {
+    if (jst_Y_state.last_direction == NEG) {
+      if (current_index_y > 0) {
+        current_index_y--;
+      } else {
+        current_index_y = LED_COUNT_Y - 1;
+      }
+    } else { // jst_y_changed == POS, because jst_y_changed is false when NEUTRAL
+      if (current_index_y + 1 < LED_COUNT_Y) {
+        current_index_y++;
+      } else {
+        current_index_y = 0;
+      }
+    }
+  }
+
+  int current_color = frames[current_frame][current_index_x][current_index_y];
+  if (btn_A_clicked) {
+    if (current_color > 0) {
+      current_color--;
+    } else {
+      current_color = COLORS_COUNT - 1;
+    }
+  }
+
+  if (btn_B_clicked) {
+    current_color = (current_color + 1) % COLORS_COUNT;
+  }
+  frames[current_frame][current_index_x][current_index_y] = (COLORS)current_color;
+
+  static bool blink = false;
+
+  LedMatrix* led_matrix = &LedMatrix::getInstance();
+  led_matrix->setLEDs(frames[current_frame]);
+  if (blink) {
+    // frames[current_state][current_index_x][current_index_y] == (rgb_t)RGB_BLACK
+    if (
+      current_color == BLACK
+    ) {
+      current_color = WHITE;
+    }
+  } else {
+    current_color = BLACK;
+  }
+  led_matrix->setLED(
+    current_index_x,
+    current_index_y,
+    (COLORS)current_color
+  );
+
+  blink = !blink;
+}
+
+bool update_state() {
   input_manager();
 
   switch (current_state) {
@@ -106,6 +218,12 @@ bool update_state_callback(struct repeating_timer *t) {
     break;
   case SETTING_STATE:
     setting_state();
+    break;
+  case FRAME_STATE:
+    frame_state();
+    break;
+  case REMEMBER_STATE:
+    printf("Remember state\n");
     break;
   default:
     break;
