@@ -35,7 +35,12 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(Memory_game Memory_game.cpp LedMatrix.cpp)
+add_executable(Memory_game
+    Memory_game.cpp
+    LedMatrix.cpp
+    GPIO.cpp
+    InputManager.cpp
+)
 
 pico_set_program_name(Memory_game "Memory_game")
 pico_set_program_version(Memory_game "0.1")

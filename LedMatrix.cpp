@@ -59,10 +59,21 @@ void LedMatrix::render() {
   was_changed = false;
   for (uint8_t j = 0; j < LED_COUNT_Y; j++) {
     for (int8_t i = 0; i < LED_COUNT_X; i++) {
-      const uint8_t index_x = j % 2 == 0 ? LED_COUNT_X - 1 - i : i;
-      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].G);
-      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].R);
-      pio_sm_put_blocking(led_matrix_pio, sm, COLORS_ARRAY[led_matrix[index_x][j]].B);
+      pio_sm_put_blocking(
+        led_matrix_pio,
+        sm,
+        COLORS_ARRAY[led_matrix[j % 2 == 0 ? LED_COUNT_X - 1 - i : i][j]].G
+      );
+      pio_sm_put_blocking(
+        led_matrix_pio,
+        sm,
+        COLORS_ARRAY[led_matrix[j % 2 == 0 ? LED_COUNT_X - 1 - i : i][j]].R
+      );
+      pio_sm_put_blocking(
+        led_matrix_pio,
+        sm,
+        COLORS_ARRAY[led_matrix[j % 2 == 0 ? LED_COUNT_X - 1 - i : i][j]].B
+      );
     }
   }
   sleep_us(100); // wait for 100us, RESET signal from datasheet
