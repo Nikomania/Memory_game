@@ -21,6 +21,14 @@ void InputManager::update() {
 
   checkJoystickState(&jst_X_state);
   checkJoystickState(&jst_Y_state);
+
+  printf("A: %d, B: %d, SW: %d, X: %d, Y: %d\n",
+    btn_A_state.was_pressed,
+    btn_B_state.was_pressed,
+    sw_state.was_pressed,
+    jst_X_state.last_direction,
+    jst_Y_state.last_direction
+  );
 }
 
 void InputManager::checkButtonState(button_state_t* btn_state) {

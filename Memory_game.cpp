@@ -16,9 +16,9 @@
 enum state_t {
   INIT_STATE,
   SETTING_STATE,
-  FRAME_STATE,
+  FRAMER_STATE,
   REMEMBER_STATE,
-  GAME_STATE,
+  MEMORIZER_STATE,
   FINAL_STATE
 };
 enum COMPARE_STATE {
@@ -32,8 +32,8 @@ uint8_t frames_to_remember = MIN_FRAMES;
 uint8_t current_index_x = 0, current_index_y = 0, current_frame = 0;
 COMPARE_STATE show_frames_comp = CORRECT;
 
-COLORS frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
-COLORS player_frames[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
+COLORS frames_framer[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
+COLORS frames_memorizer[MAX_FRAMES][LED_COUNT_X][LED_COUNT_Y];
 
 void init_state();
 void setting_state();
@@ -65,6 +65,7 @@ int main() {
     update_state();
     led_matrix->render();
     sleep_ms(UPDATE_STATE_DELAY);
+    printf("\n");
   }
 
   delete led_matrix;
@@ -91,9 +92,9 @@ void setting_state() {
   InputManager& input_manager = InputManager::getInstance();
 
   if (input_manager.isButtonClicked(SW_PIN)) {
-    current_state = FRAME_STATE;
+    current_state = FRAMER_STATE;
     for (uint8_t i = 0; i < frames_to_remember; i++) {
-      LedMatrix::clear(frames[i]);
+      LedMatrix::clear(frames_framer[i]);
     }
     current_index_x = 0;
     current_index_y = 0;
@@ -137,7 +138,7 @@ void frame_state() {
     return;
   }
 
-  set_frames(frames);
+  set_frames(frames_framer);
 }
 
 void remember_state() {
@@ -146,9 +147,9 @@ void remember_state() {
   InputManager& input_manager = InputManager::getInstance();
 
   if (input_manager.isButtonClicked(SW_PIN)) {
-    current_state = GAME_STATE;
+    current_state = MEMORIZER_STATE;
     for (uint8_t i = 0; i < frames_to_remember; i++) {
-      LedMatrix::clear(player_frames[i]);
+      LedMatrix::clear(frames_memorizer[i]);
     }
     current_index_x = 0;
     current_index_y = 0;
@@ -158,7 +159,7 @@ void remember_state() {
 
   switch_frames();
 
-  led_matrix->setLEDs(frames[current_frame]);
+  led_matrix->setLEDs(frames_framer[current_frame]);
 }
 
 void game_state() {
@@ -173,7 +174,7 @@ void game_state() {
     return;
   }
 
-  set_frames(player_frames);
+  set_frames(frames_memorizer);
 }
 
 void final_state() {
@@ -189,13 +190,13 @@ void final_state() {
 
   switch (show_frames_comp) {
   case CORRECT:
-    led_matrix->setLEDs(frames[current_frame]);
+    led_matrix->setLEDs(frames_framer[current_frame]);
     break;
   case PLAYER:
-    led_matrix->setLEDs(player_frames[current_frame]);
+    led_matrix->setLEDs(frames_memorizer[current_frame]);
     break;
   case COMPARE:
-    if (compare_frames(frames[current_frame], player_frames[current_frame])) {
+    if (compare_frames(frames_framer[current_frame], frames_memorizer[current_frame])) {
       led_matrix->setCheck(GREEN);
     } else {
       led_matrix->setCross(RED);
@@ -219,13 +220,13 @@ bool update_state() {
   case SETTING_STATE:
     setting_state();
     break;
-  case FRAME_STATE:
+  case FRAMER_STATE:
     frame_state();
     break;
   case REMEMBER_STATE:
     remember_state();
     break;
-  case GAME_STATE:
+  case MEMORIZER_STATE:
     game_state();
     break;
   case FINAL_STATE:
